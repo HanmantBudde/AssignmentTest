@@ -3,6 +3,8 @@ package todo
 import (
 	"errors"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,7 +18,31 @@ func NewHandler(s *Store) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(r gin.IRouter) {
+	r.POST("/todos", h.create)
 	r.GET("/todos/:id", h.get)
+}
+
+type createRequest struct {
+	Text    string    `json:"text" binding:"required"`
+	DueDate time.Time `json:"due_date" binding:"required"`
+}
+
+func (h *Handler) create(c *gin.Context) {
+	var req createRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	if strings.TrimSpace(req.Text) == "" {
+		respondError(c, http.StatusBadRequest, "text must not be empty")
+		return
+	}
+	t, err := h.store.Create(c.Request.Context(), req.Text, req.DueDate)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusCreated, t)
 }
 
 func (h *Handler) get(c *gin.Context) {

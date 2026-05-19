@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"encoding/hex"
 	"errors"
+	"time"
 )
 
 //go:embed schema.sql
@@ -25,6 +26,23 @@ func NewStore(db *sql.DB) *Store {
 func (s *Store) ApplySchema(ctx context.Context) error {
 	_, err := s.db.ExecContext(ctx, schemaSQL)
 	return err
+}
+
+func (s *Store) Create(ctx context.Context, text string, dueDate time.Time) (Todo, error) {
+	t := Todo{
+		ID:      newID(),
+		Text:    text,
+		DueDate: dueDate,
+	}
+	const insertQ = `INSERT INTO todos (id, text, due_date, completed) VALUES ($1, $2, $3, $4)`
+	if _, err := s.db.ExecContext(ctx, insertQ, t.ID, t.Text, t.DueDate, t.Completed); err != nil {
+		return Todo{}, err
+	}
+	const selectQ = `SELECT created_at, updated_at FROM todos WHERE id = $1`
+	if err := s.db.QueryRowContext(ctx, selectQ, t.ID).Scan(&t.CreatedAt, &t.UpdatedAt); err != nil {
+		return Todo{}, err
+	}
+	return t, nil
 }
 
 func (s *Store) Get(ctx context.Context, id string) (Todo, error) {
