@@ -21,6 +21,7 @@ func (h *Handler) RegisterRoutes(r gin.IRouter) {
 	r.POST("/todos", h.create)
 	r.GET("/todos/:id", h.get)
 	r.PUT("/todos/:id", h.update)
+	r.DELETE("/todos/:id", h.delete)
 }
 
 type createRequest struct {
@@ -81,6 +82,14 @@ func (h *Handler) update(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, t)
+}
+
+func (h *Handler) delete(c *gin.Context) {
+	if err := h.store.Delete(c.Request.Context(), c.Param("id")); err != nil {
+		respondStoreError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func respondError(c *gin.Context, status int, msg string) {

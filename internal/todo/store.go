@@ -87,6 +87,21 @@ func (s *Store) Update(ctx context.Context, id string, text *string, dueDate *ti
 	return s.Get(ctx, id)
 }
 
+func (s *Store) Delete(ctx context.Context, id string) error {
+	res, err := s.db.ExecContext(ctx, `DELETE FROM todos WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func newID() string {
 	b := make([]byte, 8)
 	_, _ = rand.Read(b)
