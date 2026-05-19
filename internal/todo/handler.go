@@ -20,6 +20,7 @@ func NewHandler(s *Store) *Handler {
 func (h *Handler) RegisterRoutes(r gin.IRouter) {
 	r.POST("/todos", h.create)
 	r.GET("/todos/:id", h.get)
+	r.PUT("/todos/:id", h.update)
 }
 
 type createRequest struct {
@@ -47,6 +48,34 @@ func (h *Handler) create(c *gin.Context) {
 
 func (h *Handler) get(c *gin.Context) {
 	t, err := h.store.Get(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		respondStoreError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, t)
+}
+
+type updateRequest struct {
+	Text      *string    `json:"text,omitempty"`
+	DueDate   *time.Time `json:"due_date,omitempty"`
+	Completed *bool      `json:"completed,omitempty"`
+}
+
+func (h *Handler) update(c *gin.Context) {
+	var req updateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	if req.Text == nil && req.DueDate == nil && req.Completed == nil {
+		respondError(c, http.StatusBadRequest, "no fields to update")
+		return
+	}
+	if req.Text != nil && strings.TrimSpace(*req.Text) == "" {
+		respondError(c, http.StatusBadRequest, "text must not be empty")
+		return
+	}
+	t, err := h.store.Update(c.Request.Context(), c.Param("id"), req.Text, req.DueDate, req.Completed)
 	if err != nil {
 		respondStoreError(c, err)
 		return

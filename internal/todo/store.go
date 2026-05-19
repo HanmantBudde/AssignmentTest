@@ -62,6 +62,31 @@ func (s *Store) Get(ctx context.Context, id string) (Todo, error) {
 	return t, nil
 }
 
+// Update applies non-nil fields to the todo with the given id. NULL parameters
+// are preserved via COALESCE so unspecified fields stay untouched. updated_at
+// is always bumped to now().
+func (s *Store) Update(ctx context.Context, id string, text *string, dueDate *time.Time, completed *bool) (Todo, error) {
+	const updateQ = `
+		UPDATE todos
+		SET text       = COALESCE($2, text),
+		    due_date   = COALESCE($3, due_date),
+		    completed  = COALESCE($4, completed),
+		    updated_at = now()
+		WHERE id = $1`
+	res, err := s.db.ExecContext(ctx, updateQ, id, text, dueDate, completed)
+	if err != nil {
+		return Todo{}, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return Todo{}, err
+	}
+	if n == 0 {
+		return Todo{}, ErrNotFound
+	}
+	return s.Get(ctx, id)
+}
+
 func newID() string {
 	b := make([]byte, 8)
 	_, _ = rand.Read(b)
