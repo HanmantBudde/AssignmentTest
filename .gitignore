@@ -1,0 +1,15 @@
+# Compiled binaries
+/todoserver
+/todoserver.exe
+
+# Test output
+*.test
+*.out
+
+# IDE
+.idea/
+.vscode/
+
+# Local env
+.env
+.env.local
