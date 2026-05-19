@@ -19,6 +19,7 @@ func NewHandler(s *Store) *Handler {
 
 func (h *Handler) RegisterRoutes(r gin.IRouter) {
 	r.POST("/todos", h.create)
+	r.GET("/todos", h.list)
 	r.GET("/todos/:id", h.get)
 	r.PUT("/todos/:id", h.update)
 	r.DELETE("/todos/:id", h.delete)
@@ -54,6 +55,22 @@ func (h *Handler) get(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, t)
+}
+
+func (h *Handler) list(c *gin.Context) {
+	includeCompleted := false
+	if v := c.Query("include_completed"); v != "" {
+		switch strings.ToLower(v) {
+		case "1", "true", "yes":
+			includeCompleted = true
+		}
+	}
+	out, err := h.store.List(c.Request.Context(), includeCompleted)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, out)
 }
 
 type updateRequest struct {

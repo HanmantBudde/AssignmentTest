@@ -62,6 +62,35 @@ func (s *Store) Get(ctx context.Context, id string) (Todo, error) {
 	return t, nil
 }
 
+// List returns todos ordered by due_date ascending. Completed items are
+// excluded unless includeCompleted is true.
+func (s *Store) List(ctx context.Context, includeCompleted bool) ([]Todo, error) {
+	query := `SELECT id, text, due_date, completed, created_at, updated_at FROM todos`
+	if !includeCompleted {
+		query += ` WHERE completed = false`
+	}
+	query += ` ORDER BY due_date ASC`
+
+	rows, err := s.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []Todo{}
+	for rows.Next() {
+		var t Todo
+		if err := rows.Scan(&t.ID, &t.Text, &t.DueDate, &t.Completed, &t.CreatedAt, &t.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Update applies non-nil fields to the todo with the given id. NULL parameters
 // are preserved via COALESCE so unspecified fields stay untouched. updated_at
 // is always bumped to now().
